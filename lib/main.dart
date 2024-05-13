@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -29,27 +33,61 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-enum Puzzle {
-  maze,
-  nonogram,
-  sudoku
+class Puzzle {
+  final String unsolved;
+  final String solved;
+
+  const Puzzle({
+    required this.unsolved,
+    required this.solved,
+  });
+
+  factory Puzzle.fromJson(Map<String, dynamic> json) {
+    return switch (json) {
+      {
+        'solved': List<dynamic> solved,
+        'unsolved': List<dynamic> unsolved,
+      } =>
+        Puzzle(
+          unsolved: unsolved[0],
+          solved: solved[0],
+        ),
+      _ => throw const FormatException('Failed to load puzzle'),
+    };
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Puzzle _selectedPuzzle = Puzzle.maze;
+  String _selectedPuzzle = 'maze';
+  Image _unsolved = const Image(image: AssetImage("assets/missing.png"));
+  Image _solved = const Image(image: AssetImage("assets/missing.png"));
 
-  void puzzleSelectCallback(Object? selectedPuzzle) {
-    if (selectedPuzzle is Puzzle) {
+  void _puzzleSelectCallback(Object? selectedPuzzle) {
+    if (selectedPuzzle is String) {
       setState(() {
         _selectedPuzzle = selectedPuzzle;
       });
     }
   }
 
-  void _generatePuzzle() {
-    setState(() {
-      print(_selectedPuzzle);
-    });
+  Future<http.Response> _fetchPuzzle() {
+    return http
+        .get(Uri.parse('http://127.0.0.1:3000/$_selectedPuzzle?width=10'));
+  }
+
+  Future<void> _generatePuzzle() async {
+    http.Response res = await _fetchPuzzle();
+
+    if (res.statusCode == 200) {
+      Puzzle puzzle = Puzzle.fromJson(jsonDecode(res.body));
+
+      setState(() {
+        _unsolved = Image.network(puzzle.unsolved);
+        _solved = Image.network(puzzle.solved);
+      });
+    } else {
+      throw Exception('Failed to fetch puzzle');
+    }
   }
 
   @override
@@ -60,22 +98,25 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: Row(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
               'Puzzle Type:',
             ),
             DropdownButton(items: const [
-              DropdownMenuItem(value: Puzzle.maze, child: Text('Maze')),
-              DropdownMenuItem(value: Puzzle.nonogram, child: Text('Nonogram')),
-              DropdownMenuItem(value: Puzzle.sudoku, child: Text('Sudoku')),
-            ], 
-            value: _selectedPuzzle,
-            onChanged: puzzleSelectCallback)
+              DropdownMenuItem(value: 'maze', child: Text('Maze')),
+              // DropdownMenuItem(value: 'nonogram', child: Text('Nonogram')),
+              // DropdownMenuItem(value: 'sudoku', child: Text('Sudoku')),
+            ], value: _selectedPuzzle, onChanged: _puzzleSelectCallback)
           ],
         ),
-      ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [_unsolved, _solved],
+        )
+      ])),
       floatingActionButton: FloatingActionButton(
         onPressed: _generatePuzzle,
         tooltip: 'Generate',
