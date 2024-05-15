@@ -30,8 +30,8 @@ class Container extends StatefulWidget {
 }
 
 class _ContainerState extends State<Container> {
-  int index = 0;
-  final pages = [const HomePage(), const CreatePage()];
+  int _index = 0;
+  final _pages = [const HomePage(), const CreatePage()];
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -39,11 +39,11 @@ class _ContainerState extends State<Container> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Puzzle App'),
       ),
-      body: pages[index],
+      body: _pages[_index],
       bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
+        selectedIndex: _index,
         onDestinationSelected: (index) => setState(() {
-          this.index = index;
+          _index = index;
         }),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
